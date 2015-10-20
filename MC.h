@@ -41,14 +41,11 @@ class MC
     	double getDaccp() const;
         double getNh() const;
         double getNv() const;
-        // ******** Setters ******//
-        // void setRodlist(std::vector<HR> RodL);
 
     	// ******** Other Functianality *******//
         void Add(Cells &s,double &prob,double &proba);
         void Del(Cells &s,double &prob,double &probd, double &size);
-    	void MCRUN(); 
-        void Zvs_();
+    	array<double,10000> MCSUS(); 
 
     	void plot(const vector<HR>& VRodlist, const vector<HR>& HRodlist);
 

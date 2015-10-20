@@ -1,22 +1,11 @@
 /*
 * MC.cpp
-* Simulation of 2-D Rds By GCMC
+* Simulation of 2-D Rods By GCMC with SUS, No energy
 * Author: Yuding Ai
-* Date: 2015.06.05
+* Date: 2015.10.19
 * *************************** MC implementation ********************************
-* This simulation follows grand canonical ensemble.
-* In such simulation, Only Energy and N of particles fluctuate, we accomplish EF by
-* using both add/del and displacement moves, while NF by particle addition and 
-* deletion moves;
+* This simulation follows Successive Umbrella sampling without energy.
 * ******************************************************************************
-*
-* The Acceptance relation for Addition is given by: (Page 12 --M.S.Shell 2012)
-*  -- Pad = min [1,((r*c/2)/(N + 1)) * exp{-beta*miu}]
-*
-* The Acceptance relation for Deletion is given by:
-*  -- Pde = min [1,(N/(r*c/2))*exp{beta*miu}]
-*
-* where miu is the chemical potential
 *
 */
 
@@ -30,7 +19,7 @@ MC::MC(long int ST, int LEN,int C, int R, double Z)
 	r = R;
 	c = C;
 	length = LEN;
-	step = ST;
+	step = ST; // now the step stands for the steps in each SUS window
 	z = Z;
 	nh=nv=dh=dv=ah=av=0;
 }
@@ -88,7 +77,7 @@ void MC::Add(Cells &s,double &prob,double &proba)
 	int x,y,o; // pick a random position and orientation for the HR to be added;
 	x = rand()%c;
 	y = rand()%r;
-	o = rand()%2;// change it to 1 for  lattice gas case
+	o = rand()%1;// change it to 1 for  lattice gas case
 
 	if(s.getSquare(x,y).isEmpty()) // if it's open, try to do Addition;
 	{
@@ -161,10 +150,6 @@ void MC::Add(Cells &s,double &prob,double &proba)
 
 void MC::Del(Cells &s,double &prob,double &probd,double &size)
 {
-	// vector<HR> Rodlist;
-	// Rodlist.clear();
-	// Rodlist.insert( Rodlist.end(), VRodlist.begin(), VRodlist.end());//merge vertical first
-	// Rodlist.insert( Rodlist.end(), HRodlist.begin(), HRodlist.end());//then merge hor
 	//Do Del;
 	if(nv+nh > 0)// make sure there are rod;
 	{
@@ -213,77 +198,98 @@ void MC::Del(Cells &s,double &prob,double &probd,double &size)
 }
 
 
-void MC::MCRUN()
+array<double,10000> MC::MCSUS()
 {
-	Cells s(c,r);
+	Cells s(c,r);  //  setting the lattice;
+	//==========================================================  declare instance variables ============================================================= //
+	stringstream sh;
+	sh.precision(20);
+	double addordel;           // the prob to decide either add or del;
+	double probd,proba;      // the acceptance prob of addition and deletion; 
+	double prob;               // the prob to decide either accept add/del;
+	double aaccp,daccp;      // the acceptance probabilities: 
+	double V = double(r*c);    // the total lattice size
+	double K = double(length); //
+    array<double,10000> WF;
 
-	stringstream st;
-
-	double addordel; // the prob to decide either add or del;
-	double probd,proba; // the acceptance prob of addition; proba = min(1.0,aaccp);
-	double prob; // the prob to decide either accept add/del;
-	double aaccp,daccp; 
-	double Q; // the fraction of hor and ver particle;
-	double tho; // the density 
-	double AD;// addition and deletion fraction
-	double size;
-		
 	srand(time(NULL));
-	long int i = 0;
-	// Histogram his(0, r*c/length, 1); // the histogram of nv
+	long int i = 0; // counter for each window
+	double w = 1.0; // a counter that keep track of the index of window
+	double fu,fl; // occurrence counter
+	
 
 	//================================Start my MC simulation=================================
-	while (i<step)
+	while (w <= V/K) // while loop terminate until finish the last window; window[V/K]
 	{
-		i++;
-		// generate a random probability to decide either add or del;
-		addordel = rand()%2;
-		size = av+ah-dv-dh;
-
-		// *****************define the probabilities ***********************************// I HAVE TO CHANGE IT FOR LATTICE GAS CASE!!!
-		prob = ((double) rand() / (RAND_MAX)); 
-		tho = double(length*size)/double(r*c);
-
-		aaccp = z*double(r*c)/(double(nh+nv+1.0)*double(length));
-		daccp = (double(nh+nv)*double(length))/(z*double(r*c));
-
-		proba = min(1.0,aaccp);
-		probd = min(1.0,daccp);
-
-        // ===========================Addition ===================================
-		if(addordel == 0) 
+		fu = fl = 0; // initially set to 0
+		i = 0;
+		while(i < step || nv+nh != w)
+		// Simulation for each window
 		{
-			//Do Addition;
-			Add(s,prob,proba);
-		}
+			i++;
+			// generate a random probability to decide either add or del;
+			addordel = rand()%2;
+		    double size = nv+nh;			
+			
+			prob = ((double) rand() / (RAND_MAX)); 
 
-		// ============================Deletion=============================
-		else
-		{
-			if (size != 0) // make sure there are rods to be del;
+			aaccp = (z*V)/((size+1.0)*K)*(exp(WF[int(size+1)] - WF[int(size)]));
+			daccp = (size*K)/(z*V)*(exp(WF[int(size-1)] - WF[int(size)]));	
+
+			probd = min(1.0,daccp);
+			proba = min(1.0,aaccp);
+
+	        // ===========================Addition ===================================
+			if(addordel == 0) 
 			{
-				//Do deletion;
-				Del(s,prob,probd,size);
+				if (size == w - 1.0 ) // only try to add if the size is equal to window index - 1 -> the lower winder side
+				{
+					//try to Do Addition;
+					Add(s,prob,proba);
+					if (nv + nh == w)
+					{
+						fu++; // if successfully added particle, update fu 
+						// cout << "!"<< endl;
+					}
+				}
+			}
+
+			// ============================Deletion=============================
+			else 
+			{
+				if (size == w) // only try to delete if the size is equal to the window index -> the upper window side
+				{
+					//Do deletion;
+					Del(s,prob,probd,size);
+					if (nv+nh == w - 1.0)
+					{
+						fl++;//if successfully deleted particle, update fl
+					}
+				}			
 			}			
 		}
 
-		// ======================= Record the datas =============================================		
-        Q = (nv - nh)/(nh + nv);
-		AD = (av+ah-dv-dh)/(av+ah+dv+dh);
+		// ======================= Update the upper window side ================================
+        WF[w] += log(fu/fl);
+        cout << fl<<"  "<<fu <<" " <<nv <<endl;
+		// ======================= Print out the data into terminal =============================================		
+		cout <<"Window: "<< w <<" : "<<"W("<<w<<" : lower) = "<< WF[w-1]<<" "<<"W("<<w<<" : Upper) = "<< WF[w] << endl;
+	    w++; // switch into the next window
 
-		if (i%(step/10000) == 0)
-		{
-			// his.record(nv);
-			st << i << "         " << Q <<"        "<< nv << "          "<< nh << "         "<< tho << "         "<< AD<< "         "<< endl;
-			cout <<"Process: "<< ((10000*i)/step)/100.00 <<"%"<<"    "<<"SIZE: "<<av+ah-dv-dh<<"    "<<"# of Ver Rod: "<<nv<<"    "<<"# of Hor Rod: "<< nh <<"   "<<"Qis "<<Q <<"   "<<"tho is: "<<tho << endl;
-		}
 	}
-	// Record the data into a txt file
-	ofstream myfile3 ("dataplot.dat");
-	string data = st.str();
-	myfile3 << data;
-	myfile3.close();
-	// his.plot(0);
+
+	for(int i = 0; i< V/K+1; i++)
+	{
+		sh<<WF[i]<<endl;
+	}
+
+	ofstream myfile ("SUSWeight_function.txt");
+	myfile.precision(20);
+	string data2 = sh.str();
+	myfile << data2;
+	myfile.close();
+
+	return WF;  
 }
 
 
@@ -312,30 +318,6 @@ void MC::plot(const vector<HR>& VRodlist, const vector<HR>& HRodlist)
 	myfileh.close();
 }
 
-void MC::Zvs_()
-{
-	double z = 0;
-	double H,V,tho,Q,miubeta,cmiubeta;	
-	stringstream st;
-	ofstream myfile("dataNvsZ.dat");
-	for (int i =0; i < 500; i++)
-	{
-		MC m(1E9,1,100,100,z);
-		z = double (double(10*i)/500.0);
-		m.MCRUN();
-		H =  m.getNh();
-		V = m.getNv();
-		tho = m.getTho();
-		Q = (H - V)/(H + V);
-		miubeta = log(z); // vink, lecture 7,8: page2
-		cmiubeta = (log(tho) - log(1-tho));
-		cout << i << endl;
-		st << z <<"         " << H << "             "<< V<< "             "<<tho<< "             "<<Q<< "             "<< miubeta<< "             "<< cmiubeta << endl;
-	}
-	string data = st.str();
-	myfile << data;
-	myfile.close();
-}
 
 
 
