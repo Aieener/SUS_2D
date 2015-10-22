@@ -221,20 +221,22 @@ array<double,10000> MC::MCSUS()
 	//================================Start my MC simulation=================================
 	while (w <= V/K) // while loop terminate until finish the last window; window[V/K]
 	{
-		fu = fl = 1; // initially set to 1
 		i = 0;
+		fl = fu = 0;
+
 		while(i < step )
 		// Simulation for each window
 		{
 			i++;
 			// generate a random probability to decide either add or del;
+
 			addordel = rand()%2;
 		    double size = nv+nh;			
 			
 			prob = ((double) rand() / (RAND_MAX)); 
 
-			aaccp = (z*V)/((size+1.0)*K)*(exp(WF[int(w)] - WF[int(w-1)]));
-			daccp = (size*K)/(z*V)*(exp(WF[int(w-1)] - WF[int(w)]));	
+			aaccp = (z*V)/((size+1.0)*K)*(exp(WF[int(size+1)] - WF[int(size)]));
+			daccp = (size*K)/(z*V)*(exp(WF[int(size-1)] - WF[int(size)]));	
 
 			probd = min(1.0,daccp);
 			proba = min(1.0,aaccp);
@@ -242,7 +244,7 @@ array<double,10000> MC::MCSUS()
 	        // ===========================Addition ===================================
 			if(addordel == 0) 
 			{
-				if (size < w  ) // only try to add if the size is below the upper window
+				if (nh+nv < w  ) // only try to add if the size is below the upper window
 				{
 					//try to Do Addition;
 					Add(s,prob,proba);
@@ -252,34 +254,39 @@ array<double,10000> MC::MCSUS()
 			// ============================Deletion=============================
 			else 
 			{
-				if (size > w - 1) // only try to delete if the size is above the lower window size
+				if (nh+nv > w - 1) // only try to delete if the size is above the lower window size
 				{
 					//Do deletion;
 					Del(s,prob,probd,size);	
 				}			
-			}
-			//============================= Check states ========================
-			if (nv + nh == w)
+			}	
+
+			if (nv + nh == w) // only update the fu when addition succeessfully.
 			{
 				fu++; // if at the upper window, update fu
 			}
-			if (nv + nh == w - 1.0)
+			else if (nv + nh == w-1 )  // only update the fu when deletion succeessfully.
 			{
 				fl++;//if at the lower window, update fl
 			}	
-
 		}
 
-		// ======================= Update the upper window side ================================
 
-	    WF[w] += log(fu/fl);
-        // linearly extrapolate for WF[w+1] by using W[w] and WF[w-1]
-        WF[w+1] = 2*WF[w] - WF[w-1];
-        cout << fl<<"  "<<fu <<" " <<nv <<"  "<<WF[w+1]<<endl;
-		// ======================= Print out the data into terminal =============================================		
-		cout <<"Window: "<< w <<" : "<<"W("<<w<<" : lower) = "<< WF[w-1]<<" "<<"W("<<w<<" : Upper) = "<< WF[w] << endl;
-	    w++; // switch into the next window
+		// =======================  if fu and fl != 0 Update the upper window side ================================
+        if (fu!=0 && fl != 0)
+        {
+		    WF[w] = WF[w] + log(fu/fl);
+	        // linearly extrapolate for WF[w+1] by using W[w] and WF[w-1]
+	        // WF[w+1] = 2*WF[w] - WF[w-1];
+	        WF[w+1] = WF[w];
 
+	        cout << fl<<"  "<<fu <<" " <<nv <<"  "<<WF[w+1]<<endl;
+			// ======================= Print out the data into terminal =============================================		
+			cout <<"Window: "<< w <<" : "<<"W("<<w<<" : lower) = "<< WF[w-1]<<" "<<"W("<<w<<" : Upper) = "<< WF[w] << endl;
+			// initial config determine the intial value of fu and fl
+		    w++; // switch into the next window
+        }
+        // else reset fu and fl and repeat the simulation
 	}
 
 	for(int i = 0; i< V/K+1; i++)
