@@ -216,14 +216,14 @@ array<double,10000> MC::MCSUS()
 	long int i = 0; // counter for each window
 	double w = 1.0; // a counter that keep track of the index of window
 	double fu,fl; // occurrence counter
-	
+
 
 	//================================Start my MC simulation=================================
 	while (w <= V/K) // while loop terminate until finish the last window; window[V/K]
 	{
-		fu = fl = 0; // initially set to 0
+		fu = fl = 1; // initially set to 1
 		i = 0;
-		while(i < step || nv+nh != w)
+		while(i < step )
 		// Simulation for each window
 		{
 			i++;
@@ -233,8 +233,8 @@ array<double,10000> MC::MCSUS()
 			
 			prob = ((double) rand() / (RAND_MAX)); 
 
-			aaccp = (z*V)/((size+1.0)*K)*(exp(WF[int(size+1)] - WF[int(size)]));
-			daccp = (size*K)/(z*V)*(exp(WF[int(size-1)] - WF[int(size)]));	
+			aaccp = (z*V)/((size+1.0)*K)*(exp(WF[int(w)] - WF[int(w-1)]));
+			daccp = (size*K)/(z*V)*(exp(WF[int(w-1)] - WF[int(w)]));	
 
 			probd = min(1.0,daccp);
 			proba = min(1.0,aaccp);
@@ -242,36 +242,40 @@ array<double,10000> MC::MCSUS()
 	        // ===========================Addition ===================================
 			if(addordel == 0) 
 			{
-				if (size == w - 1.0 ) // only try to add if the size is equal to window index - 1 -> the lower winder side
+				if (size < w  ) // only try to add if the size is below the upper window
 				{
 					//try to Do Addition;
 					Add(s,prob,proba);
-					if (nv + nh == w)
-					{
-						fu++; // if successfully added particle, update fu 
-						// cout << "!"<< endl;
-					}
 				}
 			}
 
 			// ============================Deletion=============================
 			else 
 			{
-				if (size == w) // only try to delete if the size is equal to the window index -> the upper window side
+				if (size > w - 1) // only try to delete if the size is above the lower window size
 				{
 					//Do deletion;
-					Del(s,prob,probd,size);
-					if (nv+nh == w - 1.0)
-					{
-						fl++;//if successfully deleted particle, update fl
-					}
+					Del(s,prob,probd,size);	
 				}			
-			}			
+			}
+			//============================= Check states ========================
+			if (nv + nh == w)
+			{
+				fu++; // if at the upper window, update fu
+			}
+			if (nv + nh == w - 1.0)
+			{
+				fl++;//if at the lower window, update fl
+			}	
+
 		}
 
 		// ======================= Update the upper window side ================================
-        WF[w] += log(fu/fl);
-        cout << fl<<"  "<<fu <<" " <<nv <<endl;
+
+	    WF[w] += log(fu/fl);
+        // linearly extrapolate for WF[w+1] by using W[w] and WF[w-1]
+        WF[w+1] = 2*WF[w] - WF[w-1];
+        cout << fl<<"  "<<fu <<" " <<nv <<"  "<<WF[w+1]<<endl;
 		// ======================= Print out the data into terminal =============================================		
 		cout <<"Window: "<< w <<" : "<<"W("<<w<<" : lower) = "<< WF[w-1]<<" "<<"W("<<w<<" : Upper) = "<< WF[w] << endl;
 	    w++; // switch into the next window
