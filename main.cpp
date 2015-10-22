@@ -12,7 +12,7 @@ int main()
 
 	// ======================= Plotting the final config ========================
 	vector<HR> VR,HR;
-	MC m(1E5L,1,10,10,1);
+	MC m(1E5L,1,30,30,1);
 	m.MCSUS();
 	VR = m.getVRodlist();
 	HR = m.getHRodlist();
