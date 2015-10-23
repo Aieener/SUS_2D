@@ -221,15 +221,13 @@ array<double,10000> MC::MCSUS()
 	//================================Start my MC simulation=================================
 	while (w <= V/K) // while loop terminate until finish the last window; window[V/K]
 	{
-		i = 0;
-		fl = fu = 0;
-
+		i = 0;  // initialize my step counter; 
+		fl = fu = 0; // initialize my occurrence counter;
 		while(i < step )
-		// Simulation for each window
+		// Simulation for each window with "step" amount of step
 		{
 			i++;
 			// generate a random probability to decide either add or del;
-
 			addordel = rand()%2;
 		    double size = nv+nh;			
 			
@@ -250,7 +248,6 @@ array<double,10000> MC::MCSUS()
 					Add(s,prob,proba);
 				}
 			}
-
 			// ============================Deletion=============================
 			else 
 			{
@@ -276,8 +273,7 @@ array<double,10000> MC::MCSUS()
         if (fu!=0 && fl != 0)
         {
 		    WF[w] = WF[w] + log(fu/fl);
-	        // linearly extrapolate for WF[w+1] by using W[w] and WF[w-1]
-	        // WF[w+1] = 2*WF[w] - WF[w-1];
+	        // "linearly extrapolate" for WF[w+1] by using W[w] and WF[w-1]
 	        WF[w+1] = WF[w];
 
 	        cout << fl<<"  "<<fu <<" " <<nv <<"  "<<WF[w+1]<<endl;
