@@ -276,7 +276,7 @@ array<double,10000> MC::MCSUS()
 	        // "linearly extrapolate" for WF[w+1] by using W[w] and WF[w-1]
 	        WF[w+1] = WF[w];
 
-	        cout << fl<<"  "<<fu <<" " <<nv <<"  "<<WF[w+1]<<endl;
+	        // cout << fl<<"  "<<fu <<" " <<nv <<"  "<<WF[w+1]<<endl;
 			// ======================= Print out the data into terminal =============================================		
 			cout <<"Window: "<< w <<" : "<<"W("<<w<<" : lower) = "<< WF[w-1]<<" "<<"W("<<w<<" : Upper) = "<< WF[w] << endl;
 			// initial config determine the intial value of fu and fl
